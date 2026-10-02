@@ -256,7 +256,10 @@ export const register: Register = (on, options) => {
     // A hot reload keeps the atoms; pick their values back up.
     rt.mood = await read($, mood)
     rt.isDark = await read($, dark)
-    rt.agents = await read($, agents)
+    // Agents cast before subagents were Servants only would wear a Master's face: let them go.
+    const restored = await read($, agents)
+    rt.agents = Object.fromEntries(Object.entries(restored).filter(([, agent]) => CAST[agent.character].role === 'servant'))
+    if (Object.keys(rt.agents).length !== Object.keys(restored).length) await update($, agents, () => rt.agents)
     rt.ctx = (await $.session.usage()).context.percent ?? 0
     const themeRow = (await $.config.list()).find(row => row.key === 'theme')
     await update($, theme, () => themeOf(themeRow?.value))

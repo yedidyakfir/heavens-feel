@@ -166,13 +166,13 @@ test('the band shows her portrait where it has room, and a single line where it 
 })
 
 /** What the engine would answer the calls heavens-feel makes when a session starts. */
-const answerSessionStart = (on: any) => {
+const answerSessionStart = (on: any, isPaneOpen = true) => {
   on('session.start', async (_$: unknown, e: { cwd: string }) => ({ cwd: e.cwd }))
   on('command.register', async () => ({ value: { command: 'hf' } }))
   on('session.usage', async () => ({ value: { startedAt: 0, context: { window: 200000, percent: 42 }, rateLimits: [] } }))
   on('session.surfaces', async () => ({ value: ['terminal'] }))
   on('config.list', async () => ({ value: [] }))
-  on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.open', async () => ({ value: isPaneOpen ? { isPlaced: true } : { isPlaced: false, reason: 'narrow terminal' } }))
 }
 
 const PANE_PROPS = { title: "Sakura's room", isFocused: false, bodyColumns: 52, placement: 'dock', scroll: SCROLL, view: {} } as const
@@ -302,6 +302,30 @@ test('the avatar wraps the message without a prop the engine refuses above its o
     const banned = bannedAbove(await ui.drawn(), replyText)
 
     expect(banned).toEqual(expected)
+    await ui.unmount()
+  }
+})
+
+test("a working Servant's own figure shows in the band beside Sakura", async ($, on) => {
+  mock.clock(on, { now: Date.UTC(2026, 9, 1, 9) })
+  mock.store(on)
+  answerSessionStart(on, false)
+  on('agent.spawn', async () => ({ model: 'claude-sonnet-5-5', agentId: 'agent-band' }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const spawn = {
+    tool_use_id: 'tu-b', prompt: 'p', description: 'think it through', subagentType: 'general-purpose',
+    provider: { kind: 'engine' }, parentModel: 'claude-opus-5-5', background: true, fork: false,
+  }
+  await $.agent.spawn(spawn as never)
+  const expectedFigures = { terminal: 2, desktop: 2 }
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ surface, ...band(14, 90) })
+    const figures = surface === 'terminal' ? await ui.findAll({ type: 'Raster' }) : await ui.findAll({ type: 'Svg' })
+    const saber = await ui.find({ type: 'Text', text: /Saber/ })
+
+    expect(figures.length).toBe(expectedFigures[surface])
+    expect(saber).toBeDefined()
     await ui.unmount()
   }
 })

@@ -68,7 +68,8 @@ const BAND_MARK_COLUMNS = 4
 /** Band room the HD bust needs (20 rows, 48 columns plus text), and the standard one (11 rows). */
 const BAND_HD = { rows: 22, columns: 100 }
 const BAND_SD = { rows: 12, columns: 56 }
-const BAND_MINIS_ROWS = 18
+/** Band rows that fit the bust beside a row of Servant minis (6 rows each, plus their names). */
+const BAND_MINIS_ROWS = 14
 const MINI_CARD_COLUMNS = 13
 const SHORT_NAME_COLUMNS = 12
 const TRANSCRIPT_ROWS = 14
@@ -510,15 +511,16 @@ export const drawBand = (ui: any, e: BandEvent, view: View, openPane: () => void
   const portrait = isTerminal
     ? liveRaster(ui, e.requestId, 'band-portrait', 1, now, at => bustFrame(size, sceneAt(at, false)))
     : sakuraSvg(ui, size, scene => bustFrame(size, scene), bustBlinkFrame(size, isDark), SVG_PIXEL_BUST, view)
-  const showMinis = isTerminal && running.length > 0 && e.props.maxRows >= BAND_MINIS_ROWS
+  const showMinis = running.length > 0 && (!isTerminal || e.props.maxRows >= BAND_MINIS_ROWS)
   const textColumns = Math.max(16, firstRowWidth - (isTerminal ? 48 : 30) - 2)
   const fitting = Math.max(1, Math.floor(textColumns / MINI_CARD_COLUMNS))
   const minis = showMinis ? (
     <Box flexDirection="row" columnGap={1}>
       {running.slice(0, fitting).map(agent => (
         <Box key={`band-card-${agent.id}`} flexDirection="column" width={MINI_CARD_COLUMNS - 1}>
-          {liveRaster(ui, e.requestId, `band-mini:${agent.id}`, 1, now, agentMiniAt(agent.id))}
-          <Text color={hex(CAST[agent.character].accent)} wrap="truncate-end">{nameOf(agent)}</Text>
+          {miniArt(ui, e.surface, e.requestId, `band-mini:${agent.id}`, agent.id, 1, view)}
+          <Text bold color={hex(CAST[agent.character].accent)} wrap="truncate-end">{nameOf(agent)}</Text>
+          <Text dimColor wrap="truncate-end">{agent.endedAt ? 'done' : servantVerb(agent.character, agent.mood)}</Text>
         </Box>
       ))}
     </Box>
