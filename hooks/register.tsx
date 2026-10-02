@@ -224,6 +224,28 @@ const agentMessages = async ($: $, agentId: string): Promise<readonly SessionMes
   return Array.isArray(found) ? found : []
 }
 
+// Render trace: what each surface asked the mod to draw, to diagnose surfaces with no visible log.
+const TRACE_LIMIT = 200
+const renderTrace: string[] = []
+
+/** Never throws: a diagnostic must not break a drawing. */
+const traceRender = async ($: $, entry: Record<string, unknown>) => {
+  if (renderTrace.length >= TRACE_LIMIT) return
+  try {
+    renderTrace.push(JSON.stringify({ at: await $.clock.now(), ...entry }))
+    await $.fs.write(`${$.plugin.root}/.debug/render.jsonl`, `${renderTrace.join('\n')}\n`)
+  } catch {
+    // Nothing to do: the trace is best effort.
+  }
+}
+
+/** The shape of a tree the engine handed back, a few levels deep, for the trace. */
+const shapeOf = (node: unknown, depth = 0): unknown => {
+  if (depth > 3 || node === null || typeof node !== 'object') return typeof node === 'string' ? 'text' : node
+  const { type, props, children } = node as { type?: unknown; props?: Record<string, unknown>; children?: unknown[] }
+  return { type, props: props ? Object.keys(props) : [], children: (children ?? []).slice(0, 4).map(child => shapeOf(child, depth + 1)) }
+}
+
 const reconcileAgents = async ($: $) => {
   const listed = new Map((await $.agent.list()).map(info => [info.id, info.status]))
   for (const agent of Object.values(rt.agents)) {
@@ -426,11 +448,16 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
-    if (!e.props.isFirstOfReply) return next(e)
+    // The terminal marks the block that opens a reply; other surfaces may never set the mark.
+    const isAvatarBlock = e.props.isFirstOfReply || e.surface !== 'terminal'
+    void traceRender($, { surface: e.surface, component: e.component, requestId: e.requestId, isFirstOfReply: e.props.isFirstOfReply, textLength: e.props.text.length })
+    if (!isAvatarBlock) return next(e)
     const agentId = rt.messageAgents.get(e.requestId)
     const [all, isDark, currentTheme] = await Promise.all([read($, agents), read($, dark), read($, theme)])
     const agent = agentId ? all[agentId] ?? rt.pastAgents.get(agentId) : undefined
-    return drawAvatar($.ui.resolve(e), e, await next(e), agent, isDark, currentTheme)
+    const engineTree = await next(e)
+    void traceRender($, { surface: e.surface, requestId: e.requestId, agent: agent?.character ?? 'sakura', engine: shapeOf(engineTree) })
+    return drawAvatar($.ui.resolve(e), e, engineTree, agent, isDark, currentTheme)
   })
 
   on('ui.close', { id: PANE }, async ($, e, next) => {
@@ -443,6 +470,7 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
+    void traceRender($, { surface: e.surface, component: e.component, placement: e.props.placement, bodyColumns: e.props.bodyColumns, viewport: e.viewport })
     const view = await readView($)
     const chosen = (await read($, viewing)) || e.props.view.agentId || ''
     const agent = chosen ? (view.agents[chosen] ?? rt.pastAgents.get(chosen)) : undefined

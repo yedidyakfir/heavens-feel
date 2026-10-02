@@ -5,3 +5,4 @@
 art/gen/log_*.txt
 art/gen/preview_*.png
 art/*.html
+.debug/
