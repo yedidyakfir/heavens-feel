@@ -1,5 +1,5 @@
 // Every line the cast says: static tables, zero tokens. All lines are original.
-import type { HeavensFeelCharacter, HeavensFeelMood } from '../types'
+import type { HeavensFeelMood, HeavensFeelServant } from '../types'
 
 type Lines = Partial<Record<HeavensFeelMood | 'wake' | 'enter' | 'exit', readonly string[]>>
 
@@ -110,48 +110,18 @@ export const DARK_SAKURA: Lines = {
 
 type ServantLines = { spawn: readonly string[]; working: readonly string[]; done: readonly string[]; error: readonly string[] }
 
-export const SERVANTS: Readonly<Record<HeavensFeelCharacter, ServantLines>> = {
-  sakura: {
-    spawn: ["I'll take this part myself. A copy of me, anyway."],
-    working: ['Same kitchen, second pair of hands.'],
-    done: ['The other me is finished.'],
-    error: ['Even my copy trips sometimes.'],
-  },
+export const SERVANTS: Readonly<Record<HeavensFeelServant, ServantLines>> = {
   rider: {
     spawn: ["I'll go ahead and look. Stay here.", "Scouting. I won't be long."],
     working: ['Nothing in this corridor. Next.', 'I see it. Mapping the rest.', 'Faster if nobody follows me.'],
     done: ["Here's what's out there. All of it.", 'Reconnaissance complete. Nothing escaped me.'],
     error: ["...Blocked. I'll find another way in.", "That path's a dead end."],
   },
-  rin: {
-    spawn: ["Fine. I'll make a plan. A proper one.", 'Step back; this needs a strategist.'],
-    working: ['Order matters here. Let me sequence it.', 'If we do it in this order, nothing breaks. Probably.', "Don't rush me. Rushing is how you get Shirou."],
-    done: ["Here's the plan. Follow it exactly.", "Plan's ready. Don't make me regret the detail."],
-    error: ["That... wasn't in the plan. Give me a second.", 'Ugh. An unknown. Adjusting.'],
-  },
-  shirou: {
-    spawn: ["Leave it to me. I'll get it done.", "On it. I don't quit halfway."],
-    working: ['Trace, on... okay, more like "type, on".', 'Rolling up my sleeves.', 'One more pass. Just one.'],
-    done: ['Done! Rough edges, but it works.', 'Finished. Took a few tries, but it holds.'],
-    error: ["Ow. Okay, that didn't take. Again.", 'I broke it. I can fix it.'],
-  },
-  kirei: {
-    spawn: ['Ask, and I shall explain the rules of this war. The tool, I mean.', 'A question of doctrine. How delightful.'],
-    working: ['Consulting the scripture. The documentation, that is.', 'Everything has a rule. Let me find yours.'],
-    done: ['There is your answer. Use it wisely, or not; both amuse me.', 'Explained. The rest is your choice.'],
-    error: ['The texts are silent on this. Rare.', 'Even I cannot find that. Curious.'],
-  },
-  taiga: {
-    spawn: ["Tiger Dojo is OPEN! Status line lesson, let's go!", 'Leave the setup to your homeroom teacher!'],
-    working: ["Pay attention, this part's on the test.", 'A little to the left... there.'],
-    done: ['Lesson over! Your status line looks great, student!', 'Dojo dismissed. Go show it off.'],
-    error: ["Eh?! That's not how the diagram goes.", 'Okay, nobody saw that. Again.'],
-  },
-  archer: {
-    spawn: ["Let's see what you've written. Try not to disappoint me.", "A review. I'll be honest; you won't enjoy it."],
-    working: ['This function does three things. Pick one.', 'Interesting choice. Not a good one.'],
-    done: ['Review complete. Fewer problems than I expected. Slightly.', 'There. Fix those and it might survive production.'],
-    error: ["I can't review what I can't read.", 'The tools failed before I could judge you. Lucky.'],
+  saber: {
+    spawn: ['I answer the summons. Point me at the task.', 'As your sword, I will see this through.'],
+    working: ['Steady. One stroke at a time.', 'This is a fair fight. I will win it.', 'Hold the line. I am almost through.'],
+    done: ['It is done. The task is yours.', 'Victory. Nothing was left unfinished.'],
+    error: ['A setback. I will not yield to it.', 'The blade caught. I strike again.'],
   },
   'saber-alter': {
     spawn: ['Present the evidence. I will judge it.', 'A verdict is required. Stand aside.'],
@@ -159,11 +129,29 @@ export const SERVANTS: Readonly<Record<HeavensFeelCharacter, ServantLines>> = {
     done: ['Verdict delivered. It is final.', 'Judged. The result stands.'],
     error: ['Insufficient. I cannot rule on this.', 'The evidence is corrupted. Unacceptable.'],
   },
-  illya: {
-    spawn: ['Ooh, a new idea? Let me play with it!', "Illya's turn! Nobody interrupt."],
-    working: ['What if we did the opposite? No, wait, THIS!', "Hehe. This one's fun."],
-    done: ['Ta-da! Lots of ideas. Some of them are even good.', 'Done! Pick your favourite.'],
-    error: ["Boo. It broke. That's boring.", "Hmph. Try again, I wasn't ready."],
+  archer: {
+    spawn: ["Let's see what you've written. Try not to disappoint me.", "A review. I'll be honest; you won't enjoy it."],
+    working: ['This function does three things. Pick one.', 'Interesting choice. Not a good one.'],
+    done: ['Review complete. Fewer problems than I expected. Slightly.', 'There. Fix those and it might survive production.'],
+    error: ["I can't review what I can't read.", 'The tools failed before I could judge you. Lucky.'],
+  },
+  lancer: {
+    spawn: ["Ha! Finally something fun. Let's go!", "A wild idea? I'm in. Try to keep up."],
+    working: ['What if we came at it from the other side?', 'Faster! The fun part is right ahead.', "Here's one nobody tried yet."],
+    done: ["That's a haul! Take your pick.", 'Done, and it was a good fight.'],
+    error: ['Tch. Missed. Again, and harder.', "Ha, that one bit back. Fine by me."],
+  },
+  caster: {
+    spawn: ['A plan? Leave the scheming to the witch.', 'Every working needs a circle first. Let me draw it.'],
+    working: ['First this thread, then that one. Order is everything.', 'The spell is only as good as its plan.', 'Patience. A rushed circle burns its caster.'],
+    done: ['The plan is woven. Follow it and nothing breaks.', 'There. Every step, in its place.'],
+    error: ['Hm. A flaw in the circle. Redrawing.', 'That rune does not hold. Another approach.'],
+  },
+  assassin: {
+    spawn: ['A small task at the gate? Gladly.', 'Let us make it elegant, then.'],
+    working: ['Precision, not force.', 'A thin line, drawn true.', 'Patience is its own kind of edge.'],
+    done: ['Finished. Graceful, if I may say so.', 'Done. The gate is kept.'],
+    error: ['A misstep. Even the swallow turns back once.', 'Hm. The blade did not sing. Again.'],
   },
   'true-assassin': {
     spawn: ['...I will find it.', 'A target. Good.'],
@@ -176,6 +164,12 @@ export const SERVANTS: Readonly<Record<HeavensFeelCharacter, ServantLines>> = {
     working: ['▮▮▮...', '(the ground shakes a little)'],
     done: ['▮!', '(it is done; he lowers the blade)'],
     error: ['▮▮▮▮▮!!', '(the blade hits stone; he tries again)'],
+  },
+  gilgamesh: {
+    spawn: ['You come to the King for answers. Wise.', 'Every answer is already in my treasury.'],
+    working: ['Let me see which treasure fits your little question.', 'Hmph. Even this is written somewhere in my vault.'],
+    done: ['There. Be grateful the King answered at all.', 'Your answer, mongrel. Use it well.'],
+    error: ['Even my treasury has a missing page. How irritating.', 'This is beneath me. And yet, unsolved.'],
   },
 }
 
@@ -197,18 +191,18 @@ const DARK_VERBS: Readonly<Record<VerbMood, string>> = {
   summoning: 'summoning',
 }
 
-const SERVANT_VERBS: Readonly<Record<HeavensFeelCharacter, readonly [string, string, string]>> = {
-  sakura: ['pondering', 'stitching', 'looking'],
+/** Each Servant's verbs: [thinking, working, searching]. */
+const SERVANT_VERBS: Readonly<Record<HeavensFeelServant, readonly [string, string, string]>> = {
   rider: ['scouting', 'reading', 'mapping'],
-  rin: ['planning', 'sequencing', 'calculating'],
-  shirou: ['working', 'tracing', 'hammering'],
-  kirei: ['consulting', 'explaining', 'consulting'],
-  taiga: ['teaching', 'adjusting', 'teaching'],
-  archer: ['reviewing', 'judging your choices', 'reviewing'],
+  saber: ['standing ready', 'cutting through', 'advancing'],
   'saber-alter': ['weighing', 'ruling', 'weighing'],
-  illya: ['playing', 'scheming', 'playing'],
+  archer: ['reviewing', 'judging your choices', 'reviewing'],
+  lancer: ['charging', 'thrusting', 'hunting ideas'],
+  caster: ['scheming', 'weaving the plan', 'reading the ley lines'],
+  assassin: ['waiting at the gate', 'drawing a fine line', 'watching'],
   'true-assassin': ['hunting', 'closing in', 'hunting'],
   berserker: ['smashing', 'roaring', 'smashing'],
+  gilgamesh: ['opening the vault', 'choosing a treasure', 'searching the treasury'],
 }
 
 const isVerbMood = (mood: HeavensFeelMood): mood is VerbMood => mood in SAKURA_VERBS
@@ -216,7 +210,7 @@ const isVerbMood = (mood: HeavensFeelMood): mood is VerbMood => mood in SAKURA_V
 export const sakuraVerb = (mood: HeavensFeelMood, isDark: boolean): string =>
   isVerbMood(mood) ? (isDark ? DARK_VERBS : SAKURA_VERBS)[mood] : isDark ? 'scheming' : 'pondering'
 
-export const servantVerb = (character: HeavensFeelCharacter, mood: HeavensFeelMood): string => {
+export const servantVerb = (character: HeavensFeelServant, mood: HeavensFeelMood): string => {
   const [thinking, editing, searching] = SERVANT_VERBS[character]
   if (mood === 'editing' || mood === 'running') return editing
   if (mood === 'searching') return searching
@@ -241,7 +235,7 @@ export const sakuraLine = (mood: HeavensFeelMood | 'wake' | 'enter' | 'exit', is
   return pick(`${isDark ? 'dark' : 'sakura'}:${mood}`, table[mood] ?? SAKURA[mood as HeavensFeelMood])
 }
 
-export const servantLine = (character: HeavensFeelCharacter, kind: keyof ServantLines): string =>
+export const servantLine = (character: HeavensFeelServant, kind: keyof ServantLines): string =>
   pick(`${character}:${kind}`, SERVANTS[character][kind])
 
 // Greetings ------------------------------------------------------------------

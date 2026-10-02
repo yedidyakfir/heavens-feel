@@ -1,6 +1,6 @@
 // heavens-feel: Sakura watches over the main session; a Servant answers every subagent.
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register } from 'claude-code'
+import type { EngineInterface, Register, SessionMessage } from 'claude-code'
 
 import type { HeavensFeelActivity, HeavensFeelAgent, HeavensFeelBubble, HeavensFeelMood, HeavensFeelTheme } from '../types'
 import { cast, moodForTool } from './cast'
@@ -21,6 +21,7 @@ const bubble = atom({ plugin: 'heavens-feel', key: 'bubble' } as const, { text: 
 const paneVisible = atom({ plugin: 'heavens-feel', key: 'paneVisible' } as const, false)
 const activity = atom({ plugin: 'heavens-feel', key: 'activity' } as const, { icon: '✿', text: 'at home', at: 0 } as HeavensFeelActivity)
 const theme = atom({ plugin: 'heavens-feel', key: 'theme' } as const, 'auto' as HeavensFeelTheme)
+const viewing = atom({ plugin: 'heavens-feel', key: 'viewing' } as const, '')
 
 const TICK_MS = 100
 const TALK_MS = 1200
@@ -215,6 +216,12 @@ const readView = async ($: $): Promise<View> => {
     $.clock.now(),
   ])
   return { mood: currentMood, isDark, agents: all, bubble: line, ctx: percent, activity: doing, theme: currentTheme, now }
+}
+
+/** A subagent's own conversation, or nothing when the session cannot read it. */
+const agentMessages = async ($: $, agentId: string): Promise<readonly SessionMessage[]> => {
+  const found = await $.session.messages({ agentId })
+  return Array.isArray(found) ? found : []
 }
 
 const reconcileAgents = async ($: $) => {
@@ -433,7 +440,16 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    return drawPane($.ui.resolve(e), e, await readView($), settings, bond)
+    const view = await readView($)
+    const chosen = (await read($, viewing)) || e.props.view.agentId || ''
+    const agent = chosen ? (view.agents[chosen] ?? rt.pastAgents.get(chosen)) : undefined
+    const servant = agent ? { agent, messages: await agentMessages($, agent.id), canGoBack: !e.props.view.agentId } : undefined
+    const controls = {
+      view: (id: string) => void update($, viewing, () => id),
+      back: () => void update($, viewing, () => ''),
+      openTasks: () => void $.command.run({ command: 'tasks' }).catch(() => {}),
+    }
+    return drawPane($.ui.resolve(e), e, view, settings, bond, servant, controls)
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {

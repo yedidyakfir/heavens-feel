@@ -1,54 +1,60 @@
 // Who answers which summons: subagent type -> character, with understudies and badges.
-import type { HeavensFeelAgent, HeavensFeelCharacter, HeavensFeelMood } from '../types'
+import type { HeavensFeelAgent, HeavensFeelMood, HeavensFeelServant } from '../types'
 
-type Character = HeavensFeelCharacter
+type Servant = HeavensFeelServant
 
-const EXACT: Readonly<Record<string, Character>> = {
+/** Built-in subagent types: each answered by the Servant whose legend fits the job. */
+const EXACT: Readonly<Record<string, Servant>> = {
   explore: 'rider',
-  plan: 'rin',
-  'general-purpose': 'shirou',
-  claude: 'shirou',
-  teammate: 'shirou',
-  'claude-code-guide': 'kirei',
-  'statusline-setup': 'taiga',
-  fork: 'sakura',
+  plan: 'caster',
+  'general-purpose': 'saber',
+  claude: 'saber',
+  teammate: 'saber',
+  'claude-code-guide': 'gilgamesh',
+  'statusline-setup': 'assassin',
+  fork: 'rider',
 }
 
-const RULES: readonly (readonly [RegExp, Character])[] = [
+/** Custom types by name, first match wins. */
+const RULES: readonly (readonly [RegExp, Servant])[] = [
   [/review|checker|audit|lint|coderabbit/, 'archer'],
   [/judge|verif|meta|proximity/, 'saber-alter'],
   [/research|explor|map|search|scout|discover|intel|profil|classif/, 'rider'],
-  [/plan|roadmap|synth|architect|spec/, 'rin'],
+  [/plan|roadmap|synth|architect|spec/, 'caster'],
   [/debug|forensic|fixer|hunt|security/, 'true-assassin'],
-  [/gener|evolv|ideat|sketch|spike|empiric/, 'illya'],
-  [/exec|writ|build|updat|experiment|doc-|codebase-mapper/, 'shirou'],
-  [/guide|docs|help|explain/, 'kirei'],
+  [/gener|evolv|ideat|sketch|spike|empiric/, 'lancer'],
+  [/exec|writ|build|updat|experiment|doc-|codebase-mapper/, 'saber'],
+  [/guide|docs|help|explain/, 'gilgamesh'],
   [/fast|quick|autonom|berserk/, 'berserker'],
+  [/style|format|status|ui|design/, 'assassin'],
 ]
 
-const POOL: readonly Character[] = [
+/** Every Servant in summoning order: the fallback for a type no rule names. */
+const POOL: readonly Servant[] = [
   'archer',
   'saber-alter',
-  'illya',
+  'lancer',
   'true-assassin',
   'berserker',
   'rider',
-  'rin',
-  'shirou',
+  'caster',
+  'saber',
+  'assassin',
+  'gilgamesh',
 ]
 
-const UNDERSTUDIES: Readonly<Record<Character, readonly Character[]>> = {
-  sakura: [],
-  rider: ['true-assassin', 'illya'],
-  rin: ['archer', 'saber-alter'],
-  shirou: ['berserker', 'archer'],
-  kirei: ['saber-alter', 'archer'],
-  taiga: ['illya', 'shirou'],
-  archer: ['saber-alter', 'rin'],
-  'saber-alter': ['archer', 'berserker'],
-  illya: ['rider', 'berserker'],
-  'true-assassin': ['rider', 'saber-alter'],
-  berserker: ['shirou', 'true-assassin'],
+/** Who steps in when a Servant is already out on another summons. */
+const UNDERSTUDIES: Readonly<Record<Servant, readonly Servant[]>> = {
+  rider: ['true-assassin', 'lancer'],
+  saber: ['saber-alter', 'lancer'],
+  'saber-alter': ['saber', 'berserker'],
+  archer: ['gilgamesh', 'saber-alter'],
+  lancer: ['rider', 'assassin'],
+  caster: ['archer', 'gilgamesh'],
+  assassin: ['lancer', 'caster'],
+  'true-assassin': ['rider', 'assassin'],
+  berserker: ['saber-alter', 'lancer'],
+  gilgamesh: ['archer', 'caster'],
 }
 
 const fnv1a = (text: string): number => {
@@ -60,7 +66,7 @@ const fnv1a = (text: string): number => {
   return hash
 }
 
-export const characterForType = (subagentType: string): Character => {
+export const characterForType = (subagentType: string): Servant => {
   const type = subagentType.toLowerCase().replace(/^[^:]+:/, '')
   const exact = EXACT[type]
   if (exact) return exact
@@ -69,12 +75,11 @@ export const characterForType = (subagentType: string): Character => {
   return POOL[fnv1a(type) % POOL.length]!
 }
 
-export type Casting = { character: Character; badge: number }
+export type Casting = { character: Servant; badge: number }
 
-/** The preferred character, else an understudy, else a free one, else the preferred with a badge. */
+/** The preferred Servant, else an understudy, else a free one, else the preferred with a badge. */
 export const cast = (subagentType: string, running: readonly HeavensFeelAgent[]): Casting => {
   const preferred = characterForType(subagentType)
-  if (preferred === 'sakura') return { character: 'sakura', badge: 1 }
   const busy = new Set(running.map(agent => agent.character))
   const free = [preferred, ...UNDERSTUDIES[preferred], ...POOL].find(one => !busy.has(one))
   if (free) return { character: free, badge: 1 }

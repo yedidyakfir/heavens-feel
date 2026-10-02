@@ -14,7 +14,7 @@
 //
 // Everything here is original chibi fan art drawn by hand for this mod.
 
-import type { HeavensFeelCharacter } from '../types'
+import type { HeavensFeelCharacter, HeavensFeelMaster } from '../types'
 
 export type Palette = Record<string, number>
 
@@ -47,6 +47,12 @@ export type CastEntry = {
   /** Accent color for name plates, band chips, bubble borders. */
   accent: number
   mini: MiniSet
+  /** Masters run the main session; Servants are summoned as subagents. */
+  role: 'master' | 'servant'
+  /** Servant class as announced at summoning ('Saber', 'Archer', ...). Servants only. */
+  className?: string
+  /** The Master this Servant answers to in the Heaven's Feel route, when that Master is in the cast. */
+  master?: HeavensFeelMaster
 }
 
 const TRANSPARENT = '.'
@@ -822,74 +828,6 @@ const KIREI_MINI: MiniSet = {
   ),
 }
 
-// Taiga Fujimura: short brown hair, big grin, tiger-striped shirt.
-const TAIGA_PALETTE: Palette = {
-  H: 0x8a5a2b,
-  h: 0x5a3a18,
-  S: 0xf8e2cf,
-  s: 0xe6bda2,
-  E: 0x7a4a22,
-  e: 0x2a1a10,
-  M: 0xc26274,
-  Y: 0xe8c84a,
-  y: 0x5a7a3a,
-  A: 0x7a5a3a,
-}
-const TAIGA_MINI: MiniSet = {
-  base: sprite(
-    [
-      '...hhhhhh...',
-      '..hHHHHHHh..',
-      '.hHHHHHHHHh.',
-      '.hHHHHHHHHh.',
-      '.hHhSSSShHh.',
-      '.hSeSSSSeSh.',
-      '.hSESSSSESh.',
-      '..sSSSSSSs..',
-      '..sSMMMMSs..',
-      '..YYsSSsYY..',
-      '.YyYyYYyYyY.',
-      '.yYyYyyYyYy.',
-    ],
-    TAIGA_PALETTE,
-  ),
-  blink: sprite(
-    [
-      '...hhhhhh...',
-      '..hHHHHHHh..',
-      '.hHHHHHHHHh.',
-      '.hHHHHHHHHh.',
-      '.hHhSSSShHh.',
-      '.hSSSSSSSSh.',
-      '.hSeSSSSeSh.',
-      '..sSSSSSSs..',
-      '..sSMMMMSs..',
-      '..YYsSSsYY..',
-      '.YyYyYYyYyY.',
-      '.yYyYyyYyYy.',
-    ],
-    TAIGA_PALETTE,
-  ),
-  // The Tiger Dojo pointer stick comes out.
-  work: sprite(
-    [
-      '...hhhhhh...',
-      '..hHHHHHHh..',
-      '.hHHHHHHHHh.',
-      '.hHHHHHHHHh.',
-      '.hHhSSSShHh.',
-      '.hSeSSSSeSh.',
-      '.hSESSSSESh.',
-      '..sSSSSSSs.A',
-      '..sSMMMMSs.A',
-      '..YYsSSsYYSA',
-      '.YyYyYYyYyY.',
-      '.yYyYyyYyYy.',
-    ],
-    TAIGA_PALETTE,
-  ),
-}
-
 // Archer: white spiky hair, tan skin, red coat over black.
 const ARCHER_PALETTE: Palette = {
   H: 0xe9e9ee,
@@ -1227,31 +1165,372 @@ const BERSERKER_MINI: MiniSet = {
   ),
 }
 
+// Saber (Artoria): gold-blonde braided bun with an ahoge, green eyes, blue dress, silver collar.
+const SABER_PALETTE: Palette = {
+  H: 0xf2dc86,
+  h: 0xb89c48,
+  L: 0xfff4c0,
+  S: 0xfaeadf,
+  s: 0xe2c8b8,
+  E: 0x3cae5c,
+  e: 0x1a2a1c,
+  M: 0xc06878,
+  U: 0x2a4ea8,
+  u: 0x1a3478,
+  A: 0xcdd2de,
+  W: 0xffffff,
+  o: 0xd4f6ea,
+}
+const SABER_MINI: MiniSet = {
+  base: sprite(
+    [
+      '.....L......',
+      '....hHHh....',
+      '..hHHHHHHhh.',
+      '.hHHHHHHHHHh',
+      '.hHhSSSShHHh',
+      '.hSeSSSSeShh',
+      '.hSESSSSESh.',
+      '..sSSSSSSs..',
+      '...sSMMSs...',
+      '..AAAsSAAA..',
+      '.UUAUUUUAUU.',
+      '.UUUUuuUUUU.',
+    ],
+    SABER_PALETTE,
+  ),
+  blink: sprite(
+    [
+      '.....L......',
+      '....hHHh....',
+      '..hHHHHHHhh.',
+      '.hHHHHHHHHHh',
+      '.hHhSSSShHHh',
+      '.hSSSSSSSShh',
+      '.hSeSSSSeSh.',
+      '..sSSSSSSs..',
+      '...sSMMSs...',
+      '..AAAsSAAA..',
+      '.UUAUUUUAUU.',
+      '.UUUUuuUUUU.',
+    ],
+    SABER_PALETTE,
+  ),
+  // Invisible Air: the hidden blade catches the light at her side, wind curls off it.
+  work: sprite(
+    [
+      '.....L.....W',
+      '....hHHh...W',
+      '..hHHHHHHhhW',
+      '.hHHHHHHHHHh',
+      'ohHhSSSShHHh',
+      '.hSeSSSSeShh',
+      'ohSESSSSESho',
+      '..sSSSSSSs..',
+      '...sSMMSs..o',
+      '..AAAsSAAA..',
+      '.UUAUUUUAUU.',
+      '.UUUUuuUUUU.',
+    ],
+    SABER_PALETTE,
+  ),
+}
+
+// Lancer (Cu Chulainn): slicked-back blue hair in a long ponytail, red eyes, sharp grin, dark bodysuit.
+const LANCER_PALETTE: Palette = {
+  H: 0x2c52d8,
+  h: 0x1a308c,
+  L: 0x5c82ff,
+  S: 0xecc9a6,
+  s: 0xcaa07c,
+  E: 0xd62a2a,
+  e: 0x1a1016,
+  M: 0x7a2a30,
+  W: 0xffffff,
+  U: 0x1c2a6a,
+  u: 0x10183f,
+  A: 0xc8d0dc,
+  R: 0xe03030,
+  r: 0x8a1a1a,
+}
+const LANCER_MINI: MiniSet = {
+  base: sprite(
+    [
+      '...hhhhh....',
+      '..hHHHHHh...',
+      '.hHHHLHHHh..',
+      '.hHSShSSHHh.',
+      '.hSSSSSSSHHh',
+      '.hSeSSSeSsHh',
+      '.hSESSSESAHh',
+      '..sSSSSSs.Hh',
+      '...sMWMs..Hh',
+      '..UUsSsUU..h',
+      '.UUUUUUUUU..',
+      '.UuUUUUUuU..',
+    ],
+    LANCER_PALETTE,
+  ),
+  blink: sprite(
+    [
+      '...hhhhh....',
+      '..hHHHHHh...',
+      '.hHHHLHHHh..',
+      '.hHSShSSHHh.',
+      '.hSSSSSSSHHh',
+      '.hSSSSSSSsHh',
+      '.hSeSSSeSAHh',
+      '..sSSSSSs.Hh',
+      '...sMWMs..Hh',
+      '..UUsSsUU..h',
+      '.UUUUUUUUU..',
+      '.UuUUUUUuU..',
+    ],
+    LANCER_PALETTE,
+  ),
+  // Gae Bolg's tip rises at his left, the barb catching a glint.
+  work: sprite(
+    [
+      'W..hhhhh....',
+      'R.hHHHHHh...',
+      'RhHHHLHHHh..',
+      'rhHSShSSHHh.',
+      '.hSSSSSSSHHh',
+      '.hSeSSSeSsHh',
+      '.hSESSSESAHh',
+      '..sSSSSSs.Hh',
+      '...sMWMs..Hh',
+      '..UUsSsUU..h',
+      '.UUUUUUUUU..',
+      '.UuUUUUUuU..',
+    ],
+    LANCER_PALETTE,
+  ),
+}
+
+// Caster (Medea): a pointed violet hood shadows the upper face; pale chin, violet lips, flowing robe.
+const CASTER_PALETTE: Palette = {
+  P: 0x4a2a7e,
+  p: 0x2a1449,
+  L: 0x6c4aa0,
+  D: 0x1a0c2c,
+  V: 0x9a6ad0,
+  S: 0xf5eef6,
+  s: 0xddd0e2,
+  M: 0x9c48b4,
+  U: 0x3a2068,
+  G: 0xd8a8ff,
+  W: 0xffffff,
+}
+const CASTER_MINI: MiniSet = {
+  base: sprite(
+    [
+      '.....pp.....',
+      '....pPPp....',
+      '...pPPLPp...',
+      '..pPPPPPPp..',
+      '.pPPDDDDPPp.',
+      '.pPDDDDDDPp.',
+      '.pPDVDDVDPp.',
+      '.pPDSSSSDPp.',
+      '.pPDSMMSDPp.',
+      '.pPPPsSPPPp.',
+      '.PPUUUUUUPP.',
+      'pPPUUUUUUPPp',
+    ],
+    CASTER_PALETTE,
+  ),
+  // The two points of light under the hood go out.
+  blink: sprite(
+    [
+      '.....pp.....',
+      '....pPPp....',
+      '...pPPLPp...',
+      '..pPPPPPPp..',
+      '.pPPDDDDPPp.',
+      '.pPDDDDDDPp.',
+      '.pPDDDDDDPp.',
+      '.pPDSSSSDPp.',
+      '.pPDSMMSDPp.',
+      '.pPPPsSPPPp.',
+      '.PPUUUUUUPP.',
+      'pPPUUUUUUPPp',
+    ],
+    CASTER_PALETTE,
+  ),
+  // A small sigil lights beside her raised hand.
+  work: sprite(
+    [
+      '.....pp.....',
+      '....pPPp....',
+      '...pPPLPp...',
+      '..pPPPPPPp..',
+      '.pPPDDDDPPp.',
+      '.pPDDDDDDPp.',
+      '.pPDVDDVDPp.',
+      '.pPDSSSSDPpG',
+      '.pPDSMMSDPGW',
+      '.pPPPsSPPPpG',
+      '.PPUUUUUUPP.',
+      'pPPUUUUUUPPp',
+    ],
+    CASTER_PALETTE,
+  ),
+}
+
+// Assassin (Sasaki Kojiro): long indigo hair in a high ponytail, calm eyes, purple-and-cream haori.
+const ASSASSIN_PALETTE: Palette = {
+  H: 0x3c3c90,
+  h: 0x24245e,
+  L: 0x5e5eb8,
+  S: 0xf6e6da,
+  s: 0xdec6b6,
+  E: 0x5a6a9c,
+  e: 0x1c1c30,
+  M: 0xa46878,
+  P: 0x6c4aa2,
+  p: 0x4a3072,
+  C: 0xf6eedc,
+  W: 0xffffff,
+}
+const ASSASSIN_MINI: MiniSet = {
+  base: sprite(
+    [
+      '...hHh......',
+      '..hHHHHHh...',
+      '.hHHHHHHHHh.',
+      'hHHHHHHHHHHh',
+      'hHhSSHSSShH.',
+      'hHSeSSSSeSh.',
+      'hHSESSSSESh.',
+      'hHsSSSSSSs..',
+      'hH.sSMMSs...',
+      'hH.PPsSsPP..',
+      'hLPPCCCCCPP.',
+      '.hPpCCCCCpP.',
+    ],
+    ASSASSIN_PALETTE,
+  ),
+  blink: sprite(
+    [
+      '...hHh......',
+      '..hHHHHHh...',
+      '.hHHHHHHHHh.',
+      'hHHHHHHHHHHh',
+      'hHhSSHSSShH.',
+      'hHSSSSSSSSh.',
+      'hHSeSSSSeSh.',
+      'hHsSSSSSSs..',
+      'hH.sSMMSs...',
+      'hH.PPsSsPP..',
+      'hLPPCCCCCPP.',
+      '.hPpCCCCCpP.',
+    ],
+    ASSASSIN_PALETTE,
+  ),
+  // Monohoshizao: a hair-thin line of steel stands at his side.
+  work: sprite(
+    [
+      '...hHh......',
+      '..hHHHHHh...',
+      '.hHHHHHHHHh.',
+      'hHHHHHHHHHHW',
+      'hHhSSHSSShHW',
+      'hHSeSSSSeShW',
+      'hHSESSSSEShW',
+      'hHsSSSSSSs.W',
+      'hH.sSMMSs..W',
+      'hH.PPsSsPP.W',
+      'hLPPCCCCCPPW',
+      '.hPpCCCCCpP.',
+    ],
+    ASSASSIN_PALETTE,
+  ),
+}
+
+// Gilgamesh: spiky upswept gold hair, red eyes, a smirk, gold armor collar.
+const GILGAMESH_PALETTE: Palette = {
+  H: 0xeec22c,
+  h: 0xb48c16,
+  L: 0xfff0a0,
+  S: 0xf6dece,
+  s: 0xdebaa0,
+  E: 0xd82a2a,
+  e: 0x1a0c0c,
+  M: 0x9a4040,
+  G: 0xe6b62e,
+  g: 0xa07616,
+  o: 0xfff2a8,
+  W: 0xffffff,
+}
+const GILGAMESH_MINI: MiniSet = {
+  base: sprite(
+    [
+      '..H..H.H.HH.',
+      '.hHhhHhHhHHh',
+      '.hHHHHHHHHHh',
+      '.hHHHHLHHHHh',
+      '.hHSSSSSSHh.',
+      '.hSeSSSSeSh.',
+      '.hSESSSSESh.',
+      '..sSSSSSSs..',
+      '...sSSSMMs..',
+      '..GGgsSgGG..',
+      '.GGGGgGgGGGG',
+      '.GGGGGGGGGG.',
+    ],
+    GILGAMESH_PALETTE,
+  ),
+  blink: sprite(
+    [
+      '..H..H.H.HH.',
+      '.hHhhHhHhHHh',
+      '.hHHHHHHHHHh',
+      '.hHHHHLHHHHh',
+      '.hHSSSSSSHh.',
+      '.hSSSSSSSSh.',
+      '.hSeSSSSeSh.',
+      '..sSSSSSSs..',
+      '...sSSSMMs..',
+      '..GGgsSgGG..',
+      '.GGGGgGgGGGG',
+      '.GGGGGGGGGG.',
+    ],
+    GILGAMESH_PALETTE,
+  ),
+  // The Gate of Babylon ripples open behind him: golden sparks ring the frame.
+  work: sprite(
+    [
+      'o.H..H.H.HH.',
+      '.hHhhHhHhHHh',
+      '.hHHHHHHHHHo',
+      'ohHHHHLHHHHh',
+      '.hHSSSSSSHh.',
+      '.hSeSSSSeShW',
+      'ohSESSSSESh.',
+      '..sSSSSSSs.o',
+      'W..sSSSMMs..',
+      '..GGgsSgGG..',
+      'oGGGGgGgGGGG',
+      '.GGGGGGGGGGo',
+    ],
+    GILGAMESH_PALETTE,
+  ),
+}
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
 
 export const CAST: Readonly<Record<CharacterId, CastEntry>> = {
+  // Masters
   sakura: {
     id: 'sakura',
     name: 'Sakura Matou',
     title: 'the one who waits at home',
     accent: 0x8f73c2,
     mini: SAKURA_MINI,
-  },
-  rider: {
-    id: 'rider',
-    name: 'Rider',
-    title: 'scout',
-    accent: 0xb9a3d9,
-    mini: RIDER_MINI,
-  },
-  rin: {
-    id: 'rin',
-    name: 'Rin Tohsaka',
-    title: 'strategist',
-    accent: 0xc8302f,
-    mini: RIN_MINI,
+    role: 'master',
   },
   shirou: {
     id: 'shirou',
@@ -1259,34 +1538,15 @@ export const CAST: Readonly<Record<CharacterId, CastEntry>> = {
     title: 'does the work',
     accent: 0xd9622b,
     mini: SHIROU_MINI,
+    role: 'master',
   },
-  kirei: {
-    id: 'kirei',
-    name: 'Kotomine Kirei',
-    title: 'keeper of the rules',
-    accent: 0xd7b24a,
-    mini: KIREI_MINI,
-  },
-  taiga: {
-    id: 'taiga',
-    name: 'Taiga Fujimura',
-    title: 'Tiger Dojo instructor',
-    accent: 0xe8c84a,
-    mini: TAIGA_MINI,
-  },
-  archer: {
-    id: 'archer',
-    name: 'Archer',
-    title: 'reviewer',
-    accent: 0xb3252a,
-    mini: ARCHER_MINI,
-  },
-  'saber-alter': {
-    id: 'saber-alter',
-    name: 'Saber Alter',
-    title: 'judge',
-    accent: 0xf2d13a,
-    mini: SABER_ALTER_MINI,
+  rin: {
+    id: 'rin',
+    name: 'Rin Tohsaka',
+    title: 'strategist',
+    accent: 0xc8302f,
+    mini: RIN_MINI,
+    role: 'master',
   },
   illya: {
     id: 'illya',
@@ -1294,6 +1554,84 @@ export const CAST: Readonly<Record<CharacterId, CastEntry>> = {
     title: 'wild idea',
     accent: 0x5a3a8a,
     mini: ILLYA_MINI,
+    role: 'master',
+  },
+  kirei: {
+    id: 'kirei',
+    name: 'Kotomine Kirei',
+    title: 'keeper of the rules',
+    accent: 0xd7b24a,
+    mini: KIREI_MINI,
+    role: 'master',
+  },
+  // Servants
+  rider: {
+    id: 'rider',
+    name: 'Rider',
+    title: 'scout',
+    accent: 0xb9a3d9,
+    mini: RIDER_MINI,
+    role: 'servant',
+    className: 'Rider',
+    master: 'sakura',
+  },
+  saber: {
+    id: 'saber',
+    name: 'Saber',
+    title: 'the King of Knights',
+    accent: 0x2a4ea8,
+    mini: SABER_MINI,
+    role: 'servant',
+    className: 'Saber',
+    master: 'shirou',
+  },
+  'saber-alter': {
+    id: 'saber-alter',
+    name: 'Saber Alter',
+    title: 'judge',
+    accent: 0xf2d13a,
+    mini: SABER_ALTER_MINI,
+    role: 'servant',
+    className: 'Saber',
+    master: 'sakura',
+  },
+  archer: {
+    id: 'archer',
+    name: 'Archer',
+    title: 'reviewer',
+    accent: 0xb3252a,
+    mini: ARCHER_MINI,
+    role: 'servant',
+    className: 'Archer',
+    master: 'rin',
+  },
+  lancer: {
+    id: 'lancer',
+    name: 'Lancer',
+    title: 'the hound of Ulster',
+    accent: 0x2c52d8,
+    mini: LANCER_MINI,
+    role: 'servant',
+    className: 'Lancer',
+    master: 'kirei',
+  },
+  caster: {
+    id: 'caster',
+    name: 'Caster',
+    title: 'the witch of Colchis',
+    accent: 0x9c48b4,
+    mini: CASTER_MINI,
+    role: 'servant',
+    className: 'Caster',
+  },
+  assassin: {
+    id: 'assassin',
+    name: 'Assassin',
+    title: 'the swordsman at the gate',
+    accent: 0x5e5eb8,
+    mini: ASSASSIN_MINI,
+    role: 'servant',
+    className: 'Assassin',
   },
   'true-assassin': {
     id: 'true-assassin',
@@ -1301,6 +1639,8 @@ export const CAST: Readonly<Record<CharacterId, CastEntry>> = {
     title: 'hunter',
     accent: 0xd9f0ff,
     mini: TRUE_ASSASSIN_MINI,
+    role: 'servant',
+    className: 'Assassin',
   },
   berserker: {
     id: 'berserker',
@@ -1308,6 +1648,19 @@ export const CAST: Readonly<Record<CharacterId, CastEntry>> = {
     title: 'brute force',
     accent: 0xe03030,
     mini: BERSERKER_MINI,
+    role: 'servant',
+    className: 'Berserker',
+    master: 'illya',
+  },
+  gilgamesh: {
+    id: 'gilgamesh',
+    name: 'Gilgamesh',
+    title: 'the King of Heroes',
+    accent: 0xeec22c,
+    mini: GILGAMESH_MINI,
+    role: 'servant',
+    className: 'Archer',
+    master: 'kirei',
   },
 }
 

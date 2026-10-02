@@ -25,7 +25,20 @@ import { badgeSuffix } from './cast'
 import { gridToRaster, gridToSvg, hex, svgBox, type Backdrop, type Grid } from './render'
 import { CAST } from './sprites'
 import { PANE, rt, type Settings } from './state'
-import { localTime, sakuraVerb, servantVerb } from './voice'
+import { describeTool, localTime, sakuraVerb, servantVerb } from './voice'
+
+/** One row of a subagent's conversation, as `$.session.messages({ agentId })` answers it. */
+export type ServantMessage = {
+  role: 'user' | 'assistant'
+  text: string
+  toolUses: readonly { tool: string; input: Record<string, unknown>; isError?: true; text?: string; result?: unknown }[]
+}
+
+/** The subagent the room is showing, with its conversation; `canGoBack` when the person chose it here. */
+export type ServantView = { agent: HeavensFeelAgent; messages: readonly ServantMessage[]; canGoBack: boolean }
+
+/** What the pane's buttons do; the hook builds these, since only it holds `$`. */
+export type PaneControls = { view: (id: string) => void; back: () => void; openTasks: () => void }
 
 /** What a drawing reads, read by the hook (the hook alone holds `$`). */
 export type View = {
@@ -58,6 +71,9 @@ const BAND_SD = { rows: 12, columns: 56 }
 const BAND_MINIS_ROWS = 18
 const MINI_CARD_COLUMNS = 13
 const SHORT_NAME_COLUMNS = 12
+const TRANSCRIPT_ROWS = 14
+const MESSAGE_CHARACTERS = 600
+const SUMMONS_CHARACTERS = 160
 const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const MOOD_LABEL: Readonly<Record<HeavensFeelMood, string>> = {
@@ -74,7 +90,15 @@ const MOOD_LABEL: Readonly<Record<HeavensFeelMood, string>> = {
 }
 
 export const nameOf = (agent: HeavensFeelAgent): string =>
-  agent.isFork ? 'Sakura (fork)' : `${CAST[agent.character].name}${badgeSuffix(agent.badge)}`
+  `${CAST[agent.character].name}${badgeSuffix(agent.badge)}${agent.isFork ? ' (fork)' : ''}`
+
+/** "Rider · Servant of Sakura": the class, and whose Servant it is in the war. */
+const allegianceOf = (character: HeavensFeelCharacter): string => {
+  const entry = CAST[character]
+  if (entry.role === 'master') return 'Master'
+  const master = entry.master ? `Servant of ${CAST[entry.master].name.split(' ')[0]}` : 'masterless'
+  return `${entry.className ?? 'Servant'} · ${master}`
+}
 
 const elapsed = (agent: HeavensFeelAgent, now: number): string => {
   const seconds = Math.max(0, Math.round(((agent.endedAt ?? now) - agent.startedAt) / 1000))
@@ -122,7 +146,7 @@ const agentMiniAt = (id: string) => (at: number): Frame | null => {
   const agent = rt.agents[id]
   if (!agent) return null
   const mood = agent.endedAt ? 'idle' : agent.mood
-  return miniFrame({ id, character: agent.character, mood, isDark: rt.isDark && agent.isFork, now: at })
+  return miniFrame({ id, character: agent.character, mood, isDark: false, now: at })
 }
 
 /** Sakura as an Svg: her mood's frames loop, and while idle she blinks and breathes. */
@@ -192,7 +216,7 @@ const moodPill = (ui: any, mood: HeavensFeelMood, accent: number) => (
   </ui.Text>
 )
 
-const servantCard = (ui: any, surface: string, agent: HeavensFeelAgent, view: View, width: number) => {
+const servantCard = (ui: any, surface: string, agent: HeavensFeelAgent, view: View, width: number, index: number, onView: () => void) => {
   const entry = CAST[agent.character]
   const accent = agent.isError ? DARK_ACCENT : entry.accent
   return (
@@ -212,8 +236,10 @@ const servantCard = (ui: any, surface: string, agent: HeavensFeelAgent, view: Vi
           <ui.Text bold color={hex(accent)} dimColor={Boolean(agent.endedAt)} wrap="truncate-end">
             {nameOf(agent)}
           </ui.Text>
-          <ui.Text dimColor wrap="truncate-end">{entry.title}</ui.Text>
+          <ui.Box flexGrow={1} />
+          <ui.Button key={`view-${agent.id}`} label="view ▸" hotkey={String(index + 1)} plain onPress={onView} />
         </ui.Box>
+        <ui.Text dimColor wrap="truncate-end">{allegianceOf(agent.character)}</ui.Text>
         <ui.Text color={hex(accent)} wrap="truncate-end">{agent.activity}</ui.Text>
         <ui.Text dimColor wrap="truncate-end">{statusOf(agent, view.now)}</ui.Text>
         <ui.Text dimColor italic wrap="truncate-end">「{agent.line}」</ui.Text>
@@ -226,7 +252,7 @@ const servantCard = (ui: any, surface: string, agent: HeavensFeelAgent, view: Vi
 
 type PaneEvent = {
   surface: string
-  props: { bodyColumns: number; placement?: string; view?: { agentId?: string } }
+  props: { bodyColumns: number; placement?: string }
   viewport?: { columns: number; rows: number }
 }
 
@@ -236,65 +262,143 @@ const portraitSize = (e: PaneEvent): PortraitSize =>
     ? 'hd'
     : 'sd'
 
-export const drawPane = (ui: any, e: PaneEvent, view: View, settings: Settings, bond: Record<string, number>) => {
+/** One transcript row: the summons, a reply, or a tool call with how it went. */
+const transcriptRow = (ui: any, message: ServantMessage, index: number, accent: number) => {
+  const { Box, Text } = ui
+  if (message.role === 'user') {
+    if (!message.text) return null
+    return (
+      <Box key={`row-${index}`} flexDirection="row" columnGap={1}>
+        <Text color={hex(CAST.sakura.accent)}>❀</Text>
+        <Text dimColor italic wrap="wrap">{clipText(message.text, SUMMONS_CHARACTERS)}</Text>
+      </Box>
+    )
+  }
+  return (
+    <Box key={`row-${index}`} flexDirection="column">
+      {message.text ? (
+        <Box flexDirection="row" columnGap={1}>
+          <Text color={hex(accent)}>●</Text>
+          <Box flexShrink={1} minWidth={0}>
+            <ui.Markdown text={clipText(message.text, MESSAGE_CHARACTERS)} />
+          </Box>
+        </Box>
+      ) : null}
+      {message.toolUses.map((use, k) => {
+        const doing = describeTool(use.tool, use.input)
+        const outcome = use.isError ? '✗' : use.text !== undefined || use.result !== undefined ? '✓' : '…'
+        return (
+          <Box key={`use-${index}-${k}`} flexDirection="row" columnGap={1}>
+            <Text color={hex(use.isError ? DARK_ACCENT : accent)}>{outcome}</Text>
+            <Text dimColor wrap="truncate-end">{doing.icon} {doing.text}</Text>
+          </Box>
+        )
+      })}
+    </Box>
+  )
+}
+
+const clipText = (text: string, length: number): string => (text.length > length ? `${text.slice(0, length - 1)}…` : text)
+
+/** The room when it shows a Servant: its portrait, its state, and its own conversation, live. */
+const drawServantRoom = (ui: any, e: PaneEvent, view: View, servant: ServantView, controls: PaneControls) => {
+  const { Box, Text, Button } = ui
+  const { agent, messages } = servant
+  const entry = CAST[agent.character]
+  const accent = agent.isError ? DARK_ACCENT : entry.accent
+  const width = Math.max(10, e.props.bodyColumns - 2)
+  const recent = messages.slice(-TRANSCRIPT_ROWS)
+  return (
+    <Box flexDirection="column" width={width}>
+      <Box flexDirection="row" columnGap={2}>
+        {servant.canGoBack ? <Button key="back" label="◂ Sakura" hotkey="b" plain onPress={controls.back} /> : null}
+        <Box flexGrow={1} />
+        {e.surface === 'terminal' ? <Button key="tasks" label="/tasks" hotkey="t" plain onPress={controls.openTasks} /> : null}
+      </Box>
+      <Box flexDirection="row" justifyContent="space-between" marginTop={1}>
+        <Text bold color={hex(accent)}>✦ {nameOf(agent)}</Text>
+        <Text dimColor>{statusOf(agent, view.now)}</Text>
+      </Box>
+      <Text dimColor italic>{entry.title} · {allegianceOf(agent.character)}</Text>
+      <Box justifyContent="center" marginY={1}>{miniArt(ui, e.surface, PANE, `viewed:${agent.id}`, agent.id, 2, view)}</Box>
+      <Box flexDirection="row" columnGap={1}>
+        {moodPill(ui, agent.endedAt ? 'done' : agent.mood, accent)}
+        <Box flexShrink={1} minWidth={0}>
+          <Text color={hex(accent)} wrap="truncate-end">{agent.activity}</Text>
+        </Box>
+      </Box>
+      {agent.line ? (
+        <Box borderStyle="round" borderColor={hex(accent)} paddingX={1} marginTop={1}>
+          <Text wrap="wrap" italic>「{agent.line}」</Text>
+        </Box>
+      ) : null}
+      <Box marginTop={1}>
+        <Text color={hex(accent)}>── ✦ {entry.name.split(' ')[0]}'s report ✦ ──</Text>
+      </Box>
+      <Text dimColor wrap="truncate-end">{agent.description}</Text>
+      {recent.length === 0 ? <Text dimColor>Nothing to read yet. The summons has only begun.</Text> : null}
+      {messages.length > recent.length ? <Text dimColor>… {messages.length - recent.length} earlier rows</Text> : null}
+      {recent.map((message, i) => transcriptRow(ui, message, i, accent))}
+    </Box>
+  )
+}
+
+export const drawPane = (
+  ui: any,
+  e: PaneEvent,
+  view: View,
+  settings: Settings,
+  bond: Record<string, number>,
+  servant: ServantView | undefined,
+  controls: PaneControls,
+) => {
+  if (servant) return drawServantRoom(ui, e, view, servant, controls)
   const { Box, Text } = ui
   const { mood: currentMood, isDark, agents: all, bubble: line, now } = view
   const isTerminal = e.surface === 'terminal'
-  const viewed = e.props.view?.agentId ? all[e.props.view.agentId] : undefined
-  const sakuraAccent = isDark ? DARK_ACCENT : CAST.sakura.accent
-  const accent = viewed ? CAST[viewed.character].accent : sakuraAccent
+  const accent = isDark ? DARK_ACCENT : CAST.sakura.accent
   const size = portraitSize(e)
   const width = Math.max(10, e.props.bodyColumns - 2)
-  const roster = sortedAgents(all).filter(agent => agent.id !== viewed?.id)
+  const roster = sortedAgents(all)
   const running = roster.filter(agent => !agent.endedAt).length
 
   const portrait = (() => {
-    if (viewed) return miniArt(ui, e.surface, PANE, `viewed:${viewed.id}`, viewed.id, 2, view)
     if (isTerminal) return liveRaster(ui, PANE, 'portrait', 1, now, at => portraitFrame(size, sceneAt(at, false)))
     if ('Svg' in ui) return sakuraSvg(ui, size, scene => portraitFrame(size, scene), blinkFrame(size, isDark), SVG_PIXEL_HD, view)
     return <Text color={hex(accent)}>{isDark ? '(◣_◢)' : '(´• ᴗ •`)'}</Text>
   })()
 
-  const title = viewed ? nameOf(viewed) : 'Sakura Matou'
-  const epithet = viewed ? CAST[viewed.character].title : isDark ? 'the shadow that waits at home' : CAST.sakura.title
-  const doing = viewed ? viewed.activity : `${view.activity.icon} ${view.activity.text}`
-  const said = viewed ? viewed.line : line.text
-
   return (
     <Box flexDirection="column" width={width}>
       <Box flexDirection="row" justifyContent="space-between">
         <Text bold color={hex(accent)}>
-          {isDark && !viewed ? '✸' : '❀'} {title}
+          {isDark ? '✸' : '❀'} Sakura Matou
         </Text>
-        <Text color={hex(accent)}>{hearts(bond[viewed?.character ?? 'sakura'] ?? 0)}</Text>
+        <Text color={hex(accent)}>{hearts(bond.sakura ?? 0)}</Text>
       </Box>
-      <Text dimColor italic>{epithet}</Text>
+      <Text dimColor italic>{isDark ? 'the shadow that waits at home' : `${CAST.sakura.title} · Master of Rider`}</Text>
       <Box justifyContent="center" marginY={1}>{portrait}</Box>
       <Box flexDirection="row" columnGap={1}>
-        {moodPill(ui, viewed ? viewed.mood : currentMood, accent)}
+        {moodPill(ui, currentMood, accent)}
         <Box flexShrink={1} minWidth={0}>
-          <Text color={hex(accent)} wrap="truncate-end">{doing}</Text>
+          <Text color={hex(accent)} wrap="truncate-end">{view.activity.icon} {view.activity.text}</Text>
         </Box>
       </Box>
-      {said ? (
+      {line.text ? (
         <Box borderStyle="round" borderColor={hex(accent)} paddingX={1} marginTop={1}>
-          <Text wrap="wrap" italic>「{said}」</Text>
+          <Text wrap="wrap" italic>「{line.text}」</Text>
         </Box>
       ) : null}
-      {viewed ? (
-        <Text dimColor>❀ Sakura is watching over them.</Text>
-      ) : (
-        <Box flexDirection="column" marginTop={1}>
-          {shadowGauge(ui, view.ctx, settings.darkThreshold)}
-          {clockLine(ui, now, settings, running)}
-        </Box>
-      )}
+      <Box flexDirection="column" marginTop={1}>
+        {shadowGauge(ui, view.ctx, settings.darkThreshold)}
+        {clockLine(ui, now, settings, running)}
+      </Box>
       {roster.length > 0 ? (
         <Box marginTop={1}>
-          <Text color={hex(sakuraAccent)}>── ✦ Servants ✦ ──</Text>
+          <Text color={hex(accent)}>── ✦ Servants ✦ ──</Text>
         </Box>
       ) : null}
-      {roster.slice(0, ROSTER_LIMIT).map(agent => servantCard(ui, e.surface, agent, view, width))}
+      {roster.slice(0, ROSTER_LIMIT).map((agent, i) => servantCard(ui, e.surface, agent, view, width, i, () => controls.view(agent.id)))}
       {roster.length > ROSTER_LIMIT ? <Text dimColor>+{roster.length - ROSTER_LIMIT} more</Text> : null}
     </Box>
   )
@@ -302,11 +406,8 @@ export const drawPane = (ui: any, e: PaneEvent, view: View, settings: Settings, 
 
 // Message avatars ----------------------------------------------------------------
 
-const shortName = (agent: HeavensFeelAgent | undefined): string => {
-  if (!agent) return 'Sakura'
-  if (agent.isFork) return 'Sakura·fork'
-  return CAST[agent.character].name.split(' ')[0]!.slice(0, SHORT_NAME_COLUMNS)
-}
+const shortName = (agent: HeavensFeelAgent | undefined): string =>
+  agent ? CAST[agent.character].name.split(' ')[0]!.slice(0, SHORT_NAME_COLUMNS) : 'Sakura'
 
 /** A reply wearing its author's face: Sakura for the main session, the Servant for a subagent's. */
 export const drawAvatar = (
@@ -318,7 +419,7 @@ export const drawAvatar = (
   theme: HeavensFeelTheme,
 ) => {
   const character = agent?.character ?? 'sakura'
-  const isDarkFace = isDark && (!agent || agent.isFork)
+  const isDarkFace = isDark && !agent
   const accent = isDarkFace ? DARK_ACCENT : CAST[character].accent
   const head = headFrame(character, isDarkFace).grid
   const face = (() => {
@@ -484,16 +585,25 @@ export const drawCast = (ui: any, e: { surface: string }, bond: Record<string, n
         {picture(art)}
         <Text bold color={hex(entry.accent)} wrap="truncate-end">{entry.name}</Text>
         <Text dimColor wrap="truncate-end">{entry.title}</Text>
+        <Text dimColor wrap="truncate-end">{allegianceOf(id)}</Text>
         <Text color={hex(entry.accent)}>{hearts(bond[id] ?? 0)}</Text>
       </Box>
     )
   }
-  return (
+  const ids = Object.keys(CAST) as HeavensFeelCharacter[]
+  const section = (label: string, role: 'master' | 'servant') => (
     <Box flexDirection="column">
-      <Text bold color={hex(CAST.sakura.accent)}>{CAST_MARKER}</Text>
+      <Text color={hex(CAST.sakura.accent)}>── ✦ {label} ✦ ──</Text>
       <Box flexDirection="row" flexWrap="wrap" columnGap={1} rowGap={1}>
-        {(Object.keys(CAST) as HeavensFeelCharacter[]).map(card)}
+        {ids.filter(id => CAST[id].role === role).map(card)}
       </Box>
+    </Box>
+  )
+  return (
+    <Box flexDirection="column" rowGap={1}>
+      <Text bold color={hex(CAST.sakura.accent)}>{CAST_MARKER}</Text>
+      {section('Masters', 'master')}
+      {section('Servants · your subagents', 'servant')}
     </Box>
   )
 }

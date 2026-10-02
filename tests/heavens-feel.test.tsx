@@ -46,7 +46,15 @@ test('svg portraits stay under the element limit', async () => {
 })
 
 test('subagent types map to their characters', async () => {
-  const expected = { Explore: 'rider', Plan: 'rin', 'general-purpose': 'shirou', 'coderabbit:code-reviewer': 'archer', 'gsd-debugger': 'true-assassin' }
+  const expected = {
+    Explore: 'rider',
+    Plan: 'caster',
+    'general-purpose': 'saber',
+    'claude-code-guide': 'gilgamesh',
+    'statusline-setup': 'assassin',
+    'coderabbit:code-reviewer': 'archer',
+    'gsd-debugger': 'true-assassin',
+  }
 
   const actual = Object.fromEntries(Object.keys(expected).map(type => [type, characterForType(type)]))
 
@@ -77,10 +85,17 @@ test('no work greetings during Shabbat', async () => {
   expect(greeting(saturdayNight)).toBe(expectedMotzei)
 })
 
-test('every character has a mini sprite set', async () => {
-  const expectedMinis = 11
+test('the cast is five Masters and ten Servants, and subagents only ever get Servants', async () => {
+  const expectedMasters = 5
+  const expectedServants = 10
+  const types = ['Explore', 'Plan', 'general-purpose', 'claude', 'fork', 'gsd-planner', 'research:co-judge', 'anything-else', 'zz-unknown-type']
 
-  expect(Object.keys(CAST).length).toBe(expectedMinis)
+  const roles = Object.values(CAST).map(entry => entry.role)
+  const castRoles = types.map(type => CAST[characterForType(type)].role)
+
+  expect(roles.filter(role => role === 'master').length).toBe(expectedMasters)
+  expect(roles.filter(role => role === 'servant').length).toBe(expectedServants)
+  expect(castRoles.every(role => role === 'servant')).toBe(true)
 })
 
 test('the pane draws on every surface without a refusal', async ($, on) => {
@@ -150,17 +165,22 @@ test('the band shows her portrait where it has room, and a single line where it 
   }
 })
 
+/** What the engine would answer the calls heavens-feel makes when a session starts. */
+const answerSessionStart = (on: any) => {
+  on('session.start', async (_$: unknown, e: { cwd: string }) => ({ cwd: e.cwd }))
+  on('command.register', async () => ({ value: { command: 'hf' } }))
+  on('session.usage', async () => ({ value: { startedAt: 0, context: { window: 200000, percent: 42 }, rateLimits: [] } }))
+  on('session.surfaces', async () => ({ value: ['terminal'] }))
+  on('config.list', async () => ({ value: [] }))
+  on('ui.open', async () => ({ value: { isPlaced: true } }))
+}
+
 const PANE_PROPS = { title: "Sakura's room", isFocused: false, bodyColumns: 52, placement: 'dock', scroll: SCROLL, view: {} } as const
 
 test('a summoned subagent shows in the pane as its character, doing what it does', async ($, on) => {
   mock.clock(on, { now: Date.UTC(2026, 9, 1, 9) })
   mock.store(on)
-  on('session.start', async (_$, e) => ({ cwd: e.cwd }))
-  on('command.register', async () => undefined as never)
-  on('session.usage', async () => ({ startedAt: 0, context: { window: 200000, percent: 42 }, rateLimits: [] }) as never)
-  on('session.surfaces', async () => ['terminal'] as never)
-  on('config.list', async () => [] as never)
-  on('ui.open', async () => ({ isPlaced: true }) as never)
+  answerSessionStart(on)
   on('agent.spawn', async () => ({ model: 'claude-sonnet-5-5', agentId: 'agent-1' }))
   on('tool.call', async () => ({ result: 'ok' }) as never)
   await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
@@ -175,9 +195,43 @@ test('a summoned subagent shows in the pane as its character, doing what it does
   const ui = await $.ui.mount({ plugin: 'heavens-feel', surface: 'terminal', component: 'Pane', requestId: 'hf', props: PANE_PROPS })
   const rider = await ui.find({ type: 'Text', text: /Rider/ })
   const activity = await ui.find({ type: 'Text', text: expectedActivity })
+  const allegiance = await ui.find({ type: 'Text', text: /Servant of Sakura/ })
 
   expect(rider).toBeDefined()
   expect(activity).toBeDefined()
+  expect(allegiance).toBeDefined()
+  await ui.unmount()
+})
+
+test("pressing a Servant's card opens its own conversation, and back returns to Sakura", async ($, on) => {
+  mock.clock(on, { now: Date.UTC(2026, 9, 1, 9) })
+  mock.store(on)
+  answerSessionStart(on)
+  on('agent.spawn', async () => ({ model: 'claude-sonnet-5-5', agentId: 'agent-7' }))
+  const reply = 'The redirect lives in auth/session.ts.'
+  on('session.messages', async () => ({
+    value: [
+      { role: 'user', text: 'Find where the login redirect happens.', toolUses: [] },
+      { role: 'assistant', text: reply, toolUses: [{ tool_use_id: 'u1', tool: 'Grep', input: { pattern: 'redirect' }, text: '3 files' }] },
+    ],
+  }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const spawn = {
+    tool_use_id: 'tu-7', prompt: 'find it', description: 'find the login redirect', subagentType: 'Explore',
+    provider: { kind: 'engine' }, parentModel: 'claude-opus-5-5', background: true, fork: false,
+  }
+  await $.agent.spawn(spawn as never)
+  const ui = await $.ui.mount({ plugin: 'heavens-feel', surface: 'terminal', component: 'Pane', requestId: 'hf', props: PANE_PROPS })
+
+  await ui.press({ key: 'view-agent-7' })
+  const report = await ui.find({ type: 'Text', text: /report/ })
+  const grep = await ui.find({ type: 'Text', text: /searching for "redirect"/ })
+  await ui.press({ key: 'back' })
+  const sakura = await ui.find({ type: 'Text', text: /Sakura Matou/ })
+
+  expect(report).toBeDefined()
+  expect(grep).toBeDefined()
+  expect(sakura).toBeDefined()
   await ui.unmount()
 })
 

@@ -274,6 +274,7 @@ const WORKING = new Set<HeavensFeelMood>(['editing', 'searching', 'running', 'su
 
 export type MiniScene = { id: string; character: HeavensFeelCharacter; mood: HeavensFeelMood; isDark: boolean; now: number }
 
+
 export const miniFrame = ({ id, character, mood, isDark, now }: MiniScene): Frame => {
   const set = character === 'sakura' && isDark ? DARK_SAKURA_MINI : CAST[character].mini
   const isWork = (WORKING.has(mood) && phase(now, 350, 2) === 1) || mood === 'done'
