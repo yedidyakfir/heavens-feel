@@ -271,3 +271,37 @@ test('every animated portrait fits the svg limit', async () => {
 
   expect(Math.max(...sizes) < SVG_LIMIT).toBe(true)
 })
+
+/** Box props Claude Code refuses on any ancestor of a node it draws itself. */
+const ENGINE_ANCESTOR_BANNED = ['display', 'overflow', 'position', 'width', 'height', 'minWidth', 'minHeight', 'top', 'left', 'right', 'bottom']
+
+/** The banned Box props on the way down to the first node whose text matches. */
+const bannedAbove = (node: any, text: string, banned: string[] = []): string[] | undefined => {
+  if (typeof node === 'string') return node.includes(text) ? banned : undefined
+  const here = node?.type === 'Box' ? ENGINE_ANCESTOR_BANNED.filter(prop => node.props?.[prop] !== undefined) : []
+  for (const child of node?.children ?? []) {
+    const found = bannedAbove(child, text, [...banned, ...here])
+    if (found) return found
+  }
+  return undefined
+}
+
+test('the avatar wraps the message without a prop the engine refuses above its own drawing', async ($, on) => {
+  const replyText = 'The engine draws this reply.'
+  const expected: string[] = []
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e) => {
+    const { Text } = $.ui.resolve(e) as any
+    return <Text>{replyText}</Text>
+  })
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({
+      plugin: 'heavens-feel', surface, component: 'AssistantMessage', requestId: 'm-guard',
+      props: { text: replyText, isFirstOfReply: true },
+    })
+    const banned = bannedAbove(await ui.drawn(), replyText)
+
+    expect(banned).toEqual(expected)
+    await ui.unmount()
+  }
+})

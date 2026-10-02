@@ -439,7 +439,8 @@ export const drawAvatar = (
         {face}
         <ui.Text color={hex(accent)} wrap="truncate-end">{shortName(agent)}</ui.Text>
       </ui.Box>
-      <ui.Box flexGrow={1} flexShrink={1} minWidth={0}>
+      {/* No sizing or placing prop on any Box above the engine's own drawing: the engine refuses it. */}
+      <ui.Box flexGrow={1} flexShrink={1}>
         {engineTree}
       </ui.Box>
     </ui.Box>
