@@ -1,0 +1,7 @@
+# Written by Claude Code when it loads the mod
+.claude-plugin/types/
+
+# Codex run logs and derived previews (regenerate with tools/)
+art/gen/log_*.txt
+art/gen/preview_*.png
+art/*.html

@@ -1,0 +1,46 @@
+{
+  "name": "heavens-feel",
+  "version": "0.1.0",
+  "description": "Heaven's Feel cast for your agents: Sakura watches over the main session, Servants answer every subagent",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "paneOnStart": {
+      "type": "boolean",
+      "title": "Open pane on start",
+      "default": true,
+      "description": "Open Sakura's pane when a session starts (wide terminals only; /hf opens it anywhere)"
+    },
+    "band": {
+      "type": "string",
+      "title": "Band above prompt",
+      "default": "auto",
+      "options": ["auto", "always", "never"],
+      "description": "Compact line above the prompt: auto shows it while the pane is closed"
+    },
+    "spinnerTakeover": {
+      "type": "string",
+      "title": "Spinner takeover",
+      "default": "word",
+      "options": ["off", "word"],
+      "description": "Replace the spinner's verb with the working character's"
+    },
+    "darkThreshold": {
+      "type": "number",
+      "title": "Dark Sakura threshold",
+      "default": 75,
+      "description": "Context % at which Sakura turns dark (0 disables)"
+    },
+    "sleepAfterMinutes": {
+      "type": "number",
+      "title": "Sleep after (minutes)",
+      "default": 5,
+      "description": "Idle minutes before she dozes off"
+    },
+    "timezone": {
+      "type": "string",
+      "title": "Timezone",
+      "default": "Asia/Jerusalem",
+      "description": "IANA zone for greetings"
+    }
+  }
+}
