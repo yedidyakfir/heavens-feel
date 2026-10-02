@@ -23,7 +23,7 @@ const RULES: readonly (readonly [RegExp, Servant])[] = [
   [/plan|roadmap|synth|architect|spec/, 'caster'],
   [/debug|forensic|fixer|hunt|security/, 'true-assassin'],
   [/gener|evolv|ideat|sketch|spike|empiric/, 'lancer'],
-  [/exec|writ|build|updat|experiment|doc-|codebase-mapper/, 'saber'],
+  [/exec|writ|build|updat|experiment|doc-/, 'saber'],
   [/guide|docs|help|explain/, 'gilgamesh'],
   [/fast|quick|autonom|berserk/, 'berserker'],
   [/style|format|status|ui|design/, 'assassin'],
