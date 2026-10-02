@@ -151,6 +151,9 @@ export type Backdrop = { theme: 'light' | 'dark' | 'auto'; accent: number }
 
 const BACKDROP = { light: { bg: '#faf9f5', glow: 0.18 }, dark: { bg: '#262624', glow: 0.28 } }
 
+/** How far past the sprite the backdrop runs, so a frame wider than the art never shows white. */
+const BACKDROP_BLEED = 400
+
 /**
  * Several of these Svgs can share one document, where every <style> applies to all of them,
  * so a fixed theme paints with attributes and only `auto` uses a class, the same rule in each.
@@ -168,10 +171,16 @@ const backdropOf = (grid: Grid, backdrop: Backdrop): string => {
   const glow = backdrop.theme === 'light' ? BACKDROP.light.glow : BACKDROP.dark.glow
   return (
     (backdrop.theme === 'auto' ? AUTO_STYLE : '') +
-    `<rect ${backdropFill(backdrop)} x="-2" y="-2" width="${grid.w + 4}" height="${grid.h + 4}"/>` +
+    `<rect ${backdropFill(backdrop)} x="${-BACKDROP_BLEED}" y="${-BACKDROP_BLEED}" width="${grid.w + 2 * BACKDROP_BLEED}" height="${grid.h + 2 * BACKDROP_BLEED}"/>` +
     `<ellipse cx="${grid.w / 2}" cy="${grid.h - 2}" rx="${grid.w * 0.36}" ry="2.2" fill="${hex(backdrop.accent)}" opacity="${glow}"/>`
   )
 }
+
+/** The CSS pixel box an Svg of this grid draws in: give it to the element so its frame fits the art. */
+export const svgBox = (grid: Grid, pixel: number): { width: number; height: number } => ({
+  width: grid.w * pixel,
+  height: (grid.h + 1) * pixel,
+})
 
 export type SvgOptions = {
   pixel: number
@@ -192,8 +201,7 @@ const visibleDuring = (k: number, n: number, durMs: number): string =>
  * Every loop is SMIL, so it animates with no redraw (the Svg must be `isInteractive`).
  */
 export const gridToSvg = (grid: Grid, options: SvgOptions): string => {
-  const width = grid.w * options.pixel
-  const height = (grid.h + 1) * options.pixel
+  const { width, height } = svgBox(grid, options.pixel)
   const frames = options.frames ?? []
   const n = frames.length + 1
   const durMs = (options.frameMs ?? 400) * n
@@ -208,7 +216,7 @@ export const gridToSvg = (grid: Grid, options: SvgOptions): string => {
     ? '<animateTransform attributeName="transform" type="translate" values="0 0;0 1;0 0" dur="2.4s" calcMode="discrete" repeatCount="indefinite"/>'
     : ''
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -1 ${grid.w} ${grid.h + 1}" width="${width}" height="${height}" shape-rendering="crispEdges">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -1 ${grid.w} ${grid.h + 1}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" overflow="visible" style="display:block;width:100%;height:100%" shape-rendering="crispEdges">` +
     (options.backdrop ? backdropOf(grid, options.backdrop) : '') +
     `<g>${drawPaths(pathsOf(grid), erasedFill)}${loop}${blinkGroup}${bob}</g></svg>`
   )

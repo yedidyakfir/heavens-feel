@@ -22,7 +22,7 @@ import {
   type Scene,
 } from './anim'
 import { badgeSuffix } from './cast'
-import { gridToRaster, gridToSvg, hex, type Backdrop, type Grid } from './render'
+import { gridToRaster, gridToSvg, hex, svgBox, type Backdrop, type Grid } from './render'
 import { CAST } from './sprites'
 import { PANE, rt, type Settings } from './state'
 import { localTime, sakuraVerb, servantVerb } from './voice'
@@ -139,7 +139,8 @@ const sakuraSvg = (ui: any, size: PortraitSize, frameOf: (scene: Scene) => Frame
     isBreathing: isIdle,
     backdrop: backdropFor(view.theme, accent),
   })
-  return <ui.Svg source={source} alt={`Sakura Matou, ${MOOD_LABEL[view.mood]}`} isInteractive />
+  const { width, height } = svgBox(first!.grid, pixel)
+  return <ui.Svg source={source} alt={`Sakura Matou, ${MOOD_LABEL[view.mood]}`} width={width} height={height} isInteractive />
 }
 
 /** A mini sprite: a Raster the tick blits in the terminal, an Svg elsewhere, a dot where neither draws. */
@@ -150,8 +151,9 @@ const miniArt = (ui: any, surface: string, requestId: string, key: string, id: s
   if (surface === 'terminal') return liveRaster(ui, requestId, key, scale, view.now, frameAt)
   const current = frameAt(view.now)
   if ('Svg' in ui && current) {
-    const source = gridToSvg(current.grid, { pixel: SVG_PIXEL_MINI * scale, backdrop: backdropFor(view.theme, accent) })
-    return <ui.Svg source={source} alt={CAST[character].name} />
+    const pixel = SVG_PIXEL_MINI * scale
+    const source = gridToSvg(current.grid, { pixel, backdrop: backdropFor(view.theme, accent) })
+    return <ui.Svg source={source} alt={CAST[character].name} {...svgBox(current.grid, pixel)} />
   }
   return <ui.Text color={hex(accent)}>◆</ui.Text>
 }
@@ -326,7 +328,7 @@ export const drawAvatar = (
     }
     if ('Svg' in ui) {
       const source = gridToSvg(head, { pixel: SVG_PIXEL_HEAD, backdrop: backdropFor(theme, accent) })
-      return <ui.Svg source={source} alt={CAST[character].name} />
+      return <ui.Svg source={source} alt={CAST[character].name} {...svgBox(head, SVG_PIXEL_HEAD)} />
     }
     return <ui.Text color={hex(accent)}>◆</ui.Text>
   })()
@@ -473,7 +475,7 @@ export const drawCast = (ui: any, e: { surface: string }, bond: Record<string, n
       }
       if ('Svg' in ui) {
         const source = gridToSvg(grid, { pixel: SVG_PIXEL_MINI, backdrop: backdropFor(theme, entry.accent) })
-        return <ui.Svg source={source} alt={entry.name} />
+        return <ui.Svg source={source} alt={entry.name} {...svgBox(grid, SVG_PIXEL_MINI)} />
       }
       return <Text color={hex(entry.accent)}>◆</Text>
     }
