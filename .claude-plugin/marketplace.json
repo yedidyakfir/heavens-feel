@@ -1,0 +1,27 @@
+{
+  "name": "heavens-feel",
+  "owner": {
+    "name": "Yedidya Kfir",
+    "url": "https://github.com/yedidyakfir"
+  },
+  "metadata": {
+    "description": "Heaven's Feel: a Claude Code mod that gives every agent a Fate/stay night character"
+  },
+  "plugins": [
+    {
+      "name": "heavens-feel",
+      "source": "./",
+      "description": "Heaven's Feel cast for your agents: Sakura watches over the main session, Servants answer every subagent",
+      "version": "0.1.0",
+      "license": "MIT",
+      "keywords": [
+        "mod",
+        "anime",
+        "fate",
+        "pixel-art",
+        "subagents",
+        "pane"
+      ]
+    }
+  ]
+}
