@@ -407,20 +407,18 @@ export const drawPane = (
 
 // Message avatars ----------------------------------------------------------------
 
-const shortName = (agent: HeavensFeelAgent | undefined): string =>
-  agent ? CAST[agent.character].name.split(' ')[0]!.slice(0, SHORT_NAME_COLUMNS) : 'Sakura'
+const shortName = (character: HeavensFeelCharacter): string => CAST[character].name.split(' ')[0]!.slice(0, SHORT_NAME_COLUMNS)
 
-/** A reply wearing its author's face: Sakura for the main session, the Servant for a subagent's. */
+/** A reply wearing its speaker's face: a Master for the main session, the Servant for a subagent's. */
 export const drawAvatar = (
   ui: any,
   e: { surface: string },
   engineTree: unknown,
-  agent: HeavensFeelAgent | undefined,
+  character: HeavensFeelCharacter,
   isDark: boolean,
   theme: HeavensFeelTheme,
 ) => {
-  const character = agent?.character ?? 'sakura'
-  const isDarkFace = isDark && !agent
+  const isDarkFace = isDark && character === 'sakura'
   const accent = isDarkFace ? DARK_ACCENT : CAST[character].accent
   const head = headFrame(character, isDarkFace).grid
   const face = (() => {
@@ -438,7 +436,7 @@ export const drawAvatar = (
     <ui.Box flexDirection="row" columnGap={1}>
       <ui.Box flexDirection="column" flexShrink={0} width={SHORT_NAME_COLUMNS} alignItems="center">
         {face}
-        <ui.Text color={hex(accent)} wrap="truncate-end">{shortName(agent)}</ui.Text>
+        <ui.Text color={hex(accent)} wrap="truncate-end">{shortName(character)}</ui.Text>
       </ui.Box>
       {/* No sizing or placing prop on any Box above the engine's own drawing: the engine refuses it. */}
       <ui.Box flexGrow={1} flexShrink={1}>

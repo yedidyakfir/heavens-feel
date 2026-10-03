@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 
 import { moodLoop, portraitFrame } from '../hooks/anim'
-import { cast, characterForType, moodForTool } from '../hooks/cast'
+import { cast, characterForType, masterForMessage, moodForTool } from '../hooks/cast'
 import { compose, gridToRaster, gridToSvg, toBase64 } from '../hooks/render'
 import { CAST, checkSprites, SAKURA_HD } from '../hooks/sprites'
 import { greeting, isRestWindow } from '../hooks/voice'
@@ -157,7 +157,7 @@ test('the band shows her portrait where it has room, and a single line where it 
   for (const { surface, maxRows, bodyColumns, expected } of cases) {
     const ui = await $.ui.mount({ surface, ...band(maxRows, bodyColumns) })
     const portrait = (await ui.find({ type: 'Raster' })) ?? (await ui.find({ type: 'Svg' }))
-    const name = await ui.find({ type: 'Text', text: /Sakura/ })
+    const name = await ui.find({ type: 'Text', text: /^(Sakura|Shirou|Rin|Illyasviel|Kotomine)$/ })
 
     expect(portrait?.type).toBe(expected)
     expect(name).toBeDefined()
@@ -248,7 +248,7 @@ test("a reply wears its author's face on every surface", async ($, on) => {
       props: { text: replyText, isFirstOfReply: true },
     })
     const face = (await ui.find({ type: 'Raster' })) ?? (await ui.find({ type: 'Svg' }))
-    const name = await ui.find({ type: 'Text', text: /Sakura/ })
+    const name = await ui.find({ type: 'Text', text: /^(Sakura|Shirou|Rin|Illyasviel|Kotomine)$/ })
     const reply = await ui.find({ type: 'Text', text: replyText })
 
     expect(face).toBeDefined()
@@ -256,6 +256,14 @@ test("a reply wears its author's face on every surface", async ($, on) => {
     expect(reply).toBeDefined()
     await ui.unmount()
   }
+})
+
+test('main-session messages are spoken by Masters, one per message', () => {
+  const speakers = Array.from({ length: 40 }, (_, i) => masterForMessage(`msg_${i}-t0`))
+
+  expect(new Set(speakers).size > 1).toBe(true)
+  expect(speakers.every(one => CAST[one].role === 'master')).toBe(true)
+  expect(masterForMessage('msg_7-t3')).toBe(masterForMessage('msg_7-t0'))
 })
 
 test('every animated portrait fits the svg limit', async () => {

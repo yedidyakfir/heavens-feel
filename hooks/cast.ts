@@ -1,5 +1,5 @@
 // Who answers which summons: subagent type -> character, with understudies and badges.
-import type { HeavensFeelAgent, HeavensFeelMood, HeavensFeelServant } from '../types'
+import type { HeavensFeelAgent, HeavensFeelMaster, HeavensFeelMood, HeavensFeelServant } from '../types'
 
 type Servant = HeavensFeelServant
 
@@ -74,6 +74,12 @@ export const characterForType = (subagentType: string): Servant => {
   if (rule) return rule[1]
   return POOL[fnv1a(type) % POOL.length]!
 }
+
+const MASTERS: readonly HeavensFeelMaster[] = ['sakura', 'shirou', 'rin', 'illya', 'kirei']
+
+/** The Master who speaks a main-session message: chosen by its message id, so every block of one response, and every redraw, keeps the same face. */
+export const masterForMessage = (requestId: string): HeavensFeelMaster =>
+  MASTERS[fnv1a(requestId.replace(/-t\d+$/, '')) % MASTERS.length]!
 
 export type Casting = { character: Servant; badge: number }
 

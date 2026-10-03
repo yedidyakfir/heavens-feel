@@ -3,7 +3,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, SessionMessage } from 'claude-code'
 
 import type { HeavensFeelActivity, HeavensFeelAgent, HeavensFeelBubble, HeavensFeelMood, HeavensFeelTheme } from '../types'
-import { cast, moodForTool } from './cast'
+import { cast, masterForMessage, moodForTool } from './cast'
 import { gridToRaster } from './render'
 import { CAST } from './sprites'
 import { PANE, readSettings, rt, type DarkOverride, type Settings } from './state'
@@ -455,9 +455,10 @@ export const register: Register = (on, options) => {
     const agentId = rt.messageAgents.get(e.requestId)
     const [all, isDark, currentTheme] = await Promise.all([read($, agents), read($, dark), read($, theme)])
     const agent = agentId ? all[agentId] ?? rt.pastAgents.get(agentId) : undefined
+    const speaker = agent?.character ?? masterForMessage(e.requestId)
     const engineTree = await next(e)
-    void traceRender($, { surface: e.surface, requestId: e.requestId, agent: agent?.character ?? 'sakura', engine: shapeOf(engineTree) })
-    return drawAvatar($.ui.resolve(e), e, engineTree, agent, isDark, currentTheme)
+    void traceRender($, { surface: e.surface, requestId: e.requestId, speaker, engine: shapeOf(engineTree) })
+    return drawAvatar($.ui.resolve(e), e, engineTree, speaker, isDark, currentTheme)
   })
 
   on('ui.close', { id: PANE }, async ($, e, next) => {
