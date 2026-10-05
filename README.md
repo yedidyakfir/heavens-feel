@@ -1,5 +1,7 @@
 # Heaven's Feel
 
+[![reach](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/yedidyakfir--heavens-feel--heavens-feel-reach.svg)](https://mods.aidojo.si/) [![validates](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/yedidyakfir--heavens-feel--heavens-feel-validates.svg)](https://github.com/karanb192/awesome-claude-code-mods/blob/main/catalogue.md)
+
 A [Claude Code mod](https://code.claude.com/docs/en/plugins/mods/overview) that gives every agent a character from *Fate/stay night: Heaven's Feel*.
 
 ![Sakura's pixel portrait cycling through her moods](art/preview.gif)
@@ -38,6 +40,17 @@ Settings, under the plugin's options:
 | Dark Sakura threshold | 75 | Context percent where Sakura turns dark |
 | Sleep after (minutes) | 5 | Idle time before she falls asleep |
 | Timezone | Asia/Jerusalem | For her greetings, which keep Shabbat |
+
+## Turn it on and off
+
+| To turn off | How |
+| :- | :- |
+| The whole mod | `claude plugin disable heavens-feel@heavens-feel`, or the **Installed** tab of `/plugin`; `claude plugin enable heavens-feel@heavens-feel` brings it back. A running session picks it up with `/reload-plugins` |
+| Sakura's room | `/hf off` closes it and `/hf on` opens it; it reopens on its own at the next session unless you closed it last, or set **Open pane on start** off |
+| The band above the prompt | Set **Band above prompt** to `never` |
+| The spinner word | Set **Spinner takeover** to `off` |
+
+Set options with `claude plugin configure heavens-feel@heavens-feel`, or from `/plugin` inside a session. To remove it entirely: `claude plugin uninstall heavens-feel@heavens-feel`.
 
 ## What it can reach
 
